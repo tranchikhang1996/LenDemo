@@ -34,15 +34,14 @@ data class BoundingBox(
         lineBox = RectF(minX, minY, maxX, maxY)
     }
 
-    fun scale(xRatio: Float, yRatio: Float): BoundingBox {
+    fun scale(xRatio: Float, yRatio: Float, p: PointF): BoundingBox {
         return BoundingBox(
-            pointA.scale(xRatio, yRatio),
-            pointB.scale(xRatio, yRatio),
-            pointC.scale(xRatio, yRatio),
-            pointD.scale(xRatio, yRatio)
+            pointA.scale(xRatio, yRatio, p),
+            pointB.scale(xRatio, yRatio, p),
+            pointC.scale(xRatio, yRatio, p),
+            pointD.scale(xRatio, yRatio, p)
         )
     }
-
     fun isPointInLeftSide(p: PointF): Boolean = !isTheSameSide(p, pointC, pointA, pointD)
 
     fun isPointInRightSide(p: PointF): Boolean = !isTheSameSide(p, pointA, pointB, pointC)

@@ -5,9 +5,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.example.lendemo.databinding.FragmentResultBinding
+import com.example.lendemo.view.CopyCursor
 
 
 class ResultFragment : Fragment() {
@@ -34,11 +36,14 @@ class ResultFragment : Fragment() {
     }
 
     private fun setResult(result: ScannedResult) {
+        val sw = binding.root.width.toFloat()
+        val sh = kotlin.runCatching { (sw * result.image.height + 2f*(result.image.width - result.image.height) * CopyCursor.cursorWidth) / result.image.width }.getOrDefault(0)
         val constraintSet = ConstraintSet()
         constraintSet.clone(binding.root)
-        constraintSet.setDimensionRatio(R.id.imageView, "${result.image.width}:${result.image.height}")
+        constraintSet.setDimensionRatio(R.id.imageView, "${sw}:${sh}")
         constraintSet.applyTo(binding.root)
         binding.imageView.setImageBitmap(result.image.bitmapInternal)
+        binding.imageView.setPadding(CopyCursor.cursorWidth)
         binding.imageView.setTextBlocks(result)
     }
 }

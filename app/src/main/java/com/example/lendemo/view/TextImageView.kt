@@ -8,11 +8,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.applyCanvas
 import com.example.lendemo.*
 import com.example.lendemo.extension.dp
+import com.example.lendemo.extension.rotate
 import com.example.lendemo.view.CopyCursor.Companion.createEndCursor
 import com.example.lendemo.view.CopyCursor.Companion.createStartCursor
 import com.example.lendemo.view.CopyCursor.Companion.cursorWidth
-import kotlin.math.cos
-import kotlin.math.sin
 
 class TextImageView @JvmOverloads constructor(
     ctx: Context,
@@ -37,6 +36,8 @@ class TextImageView @JvmOverloads constructor(
     private val selectedLines = mutableListOf<BoundingBox>()
     private var selectedText: String? = null
 
+    private var cursorPressPadding: PointF? = null
+
     var onTextSelectedListener: ((String?) -> Unit)? = null
 
 
@@ -48,18 +49,30 @@ class TextImageView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         result?.run {
-            val xRatio = w.toFloat() / image.width.toFloat()
-            val yRatio = h.toFloat() / image.height.toFloat()
-            scaledLines = blocks.map { block -> block.scale(xRatio, yRatio) }
+            val xRatio = (w.toFloat() - 2f * cursorWidth) / image.width.toFloat()
+            val yRatio = (h.toFloat() - 2f * cursorWidth) / image.height.toFloat()
+            scaledLines = blocks.map { block ->
+                block.scale(
+                    xRatio,
+                    yRatio,
+                    PointF(cursorWidth.toFloat(), cursorWidth.toFloat())
+                )
+            }
             createDimBackground(w, h)
         }
     }
 
     fun setTextBlocks(result: ScannedResult) {
         this.result = result
-        val xRatio = width.toFloat() / result.image.width.toFloat()
-        val yRatio = height.toFloat() / result.image.height.toFloat()
-        this.scaledLines = result.blocks.map { it.scale(xRatio, yRatio) }
+        val xRatio = (width.toFloat() - 2f * cursorWidth) / result.image.width.toFloat()
+        val yRatio = (height.toFloat() - 2f * cursorWidth) / result.image.height.toFloat()
+        this.scaledLines = result.blocks.map {
+            it.scale(
+                xRatio,
+                yRatio,
+                PointF(cursorWidth.toFloat(), cursorWidth.toFloat())
+            )
+        }
         createDimBackground(width, height)
         invalidate()
     }
@@ -67,10 +80,17 @@ class TextImageView @JvmOverloads constructor(
     private fun createDimBackground(w: Int, h: Int) {
         dimBackground = if (w > 0 && h > 0) {
             Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).applyCanvas {
-                drawColor(ContextCompat.getColor(context, R.color.dim))
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+                    color = ContextCompat.getColor(context, R.color.dim)
                 }
+                drawRect(
+                    cursorWidth.toFloat(),
+                    cursorWidth.toFloat(),
+                    w.toFloat() - cursorWidth,
+                    h.toFloat() - cursorWidth,
+                    paint
+                )
+                paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
                 scaledLines.forEach { drawBox(this, it.rect, paint) }
             }
         } else null
@@ -98,18 +118,18 @@ class TextImageView @JvmOverloads constructor(
     private fun drawEndCursor(canvas: Canvas) {
         endCursor?.let {
             val path = Path()
-            val cx = (cursorWidth) * cos(it.angle) - (cursorWidth) * sin(it.angle) + it.region.left
-            val cy = (cursorWidth) * sin(it.angle) + (cursorWidth) * cos(it.angle) + it.region.top
-            val p1x = (cursorWidth) * cos(it.angle) + it.region.left
-            val p1y = (cursorWidth) * sin(it.angle) + it.region.top
-            val p2x = (-cursorWidth) * sin(it.angle) + it.region.left
-            val p2y = (cursorWidth) * cos(it.angle) + it.region.top
-            path.moveTo(it.region.left, it.region.top)
+            val cx = (it.region.pointA.x + it.region.pointC.x) / 2
+            val cy = (it.region.pointA.y + it.region.pointC.y) / 2
+            val p1x = (it.region.pointA.x + it.region.pointB.x) / 2
+            val p1y = (it.region.pointA.y + it.region.pointB.y) / 2
+            val p2x = (it.region.pointA.x + it.region.pointD.x) / 2
+            val p2y = (it.region.pointA.y + it.region.pointD.y) / 2
+            path.moveTo(it.region.pointA.x, it.region.pointA.y)
             path.lineTo(p1x, p1y)
             path.lineTo(p2x, p2y)
-            path.lineTo(it.region.left, it.region.top)
+            path.lineTo(it.region.pointA.x, it.region.pointA.y)
             path.moveTo(cx, cy)
-            path.addCircle(cx, cy, cursorWidth.toFloat(), Path.Direction.CW)
+            path.addCircle(cx, cy, cursorWidth / 2f, Path.Direction.CW)
             canvas.drawPath(path, cursorPaint)
         }
     }
@@ -117,19 +137,18 @@ class TextImageView @JvmOverloads constructor(
     private fun drawStartCursor(canvas: Canvas) {
         startCursor?.let {
             val path = Path()
-            val cx =
-                (-cursorWidth) * cos(it.angle) - (cursorWidth) * sin(it.angle) + it.region.right
-            val cy = (-cursorWidth) * sin(it.angle) + (cursorWidth) * cos(it.angle) + it.region.top
-            val p1x = (-cursorWidth) * cos(it.angle) + it.region.right
-            val p1y = (-cursorWidth) * sin(it.angle) + it.region.top
-            val p2x = (-cursorWidth) * sin(it.angle) + it.region.right
-            val p2y = (cursorWidth) * cos(it.angle) + it.region.top
-            path.moveTo(it.region.right, it.region.top)
+            val cx = (it.region.pointA.x + it.region.pointC.x) / 2
+            val cy = (it.region.pointA.y + it.region.pointC.y) / 2
+            val p1x = (it.region.pointA.x + it.region.pointB.x) / 2
+            val p1y = (it.region.pointA.y + it.region.pointB.y) / 2
+            val p2x = (it.region.pointB.x + it.region.pointC.x) / 2
+            val p2y = (it.region.pointB.y + it.region.pointC.y) / 2
+            path.moveTo(it.region.pointB.x, it.region.pointB.y)
             path.lineTo(p1x, p1y)
             path.lineTo(p2x, p2y)
-            path.lineTo(it.region.right, it.region.top)
+            path.lineTo(it.region.pointB.x, it.region.pointB.y)
             path.moveTo(cx, cy)
-            path.addCircle(cx, cy, cursorWidth.toFloat(), Path.Direction.CCW)
+            path.addCircle(cx, cy, cursorWidth / 2f, Path.Direction.CCW)
             canvas.drawPath(path, cursorPaint)
         }
     }
@@ -152,21 +171,40 @@ class TextImageView @JvmOverloads constructor(
 
     private fun onActionUp(event: MotionEvent) {
         if (isEndPressing) {
-            onEndCursorMove(PointF(event.x, event.y - cursorWidth))
+            onEndCursorMove(
+                PointF(
+                    event.x + (cursorPressPadding?.x ?: 0f),
+                    event.y + (cursorPressPadding?.y ?: 0f)
+                )
+            )
         } else if (isStartPressing) {
-            onStartCursorMove(PointF(event.x, event.y - cursorWidth))
+            onStartCursorMove(
+                PointF(
+                    event.x + (cursorPressPadding?.x ?: 0f),
+                    event.y + (cursorPressPadding?.y ?: 0f)
+                )
+            )
         }
         startCursor = startElement?.rect?.let { createStartCursor(it.pointD, -it.angle) }
         endCursor = endElement?.rect?.let { createEndCursor(it.pointC, -it.angle) }
         isStartPressing = false
         isEndPressing = false
+        cursorPressPadding = null
         updateTextAndSelectedLines()
     }
 
     private fun onActionDown(event: MotionEvent) {
-        if (endCursor?.region?.contains(event.x, event.y) == true) {
+        if (endCursor?.region?.contain(event.x, event.y) == true) {
+            cursorPressPadding = PointF(
+                endCursor?.region?.pointA?.x?.let { it - event.x } ?: 0f,
+                endCursor?.region?.pointA?.y?.let { it - event.y } ?: 0f
+            )
             isEndPressing = true
-        } else if (startCursor?.region?.contains(event.x, event.y) == true) {
+        } else if (startCursor?.region?.contain(event.x, event.y) == true) {
+            cursorPressPadding = PointF(
+                startCursor?.region?.pointB?.x?.let { it - event.x } ?: 0f,
+                startCursor?.region?.pointB?.y?.let { it - event.y } ?: 0f
+            )
             isStartPressing = true
         } else {
             startCursor = null
@@ -179,6 +217,7 @@ class TextImageView @JvmOverloads constructor(
             selectedText = null
             isEndPressing = false
             isStartPressing = false
+            cursorPressPadding = null
             lines@ for (line in scaledLines) {
                 if (!line.rect.contain(event.x, event.y)) continue
                 for (element in line.elements) {
@@ -200,11 +239,21 @@ class TextImageView @JvmOverloads constructor(
             return
         }
         if (isStartPressing) {
-            onStartCursorMove(PointF(event.x, event.y - cursorWidth))
+            onStartCursorMove(
+                PointF(
+                    event.x + (cursorPressPadding?.x ?: 0f),
+                    event.y + (cursorPressPadding?.y ?: 0f)
+                )
+            )
             updateTextAndSelectedLines()
             lastMoveUpdateTime = System.currentTimeMillis()
         } else if (isEndPressing) {
-            onEndCursorMove(PointF(event.x, event.y - cursorWidth))
+            onEndCursorMove(
+                PointF(
+                    event.x + (cursorPressPadding?.x ?: 0f),
+                    event.y + (cursorPressPadding?.y ?: 0f)
+                )
+            )
             updateTextAndSelectedLines()
             lastMoveUpdateTime = System.currentTimeMillis()
         }
@@ -295,12 +344,22 @@ class TextImageView @JvmOverloads constructor(
                     if (startElement?.rect?.isPointInLeftSide(p) == true) {
                         return toStartPressMode(p)
                     } else {
-                        endElement = line.elements.findLast { it.rect.isPointInRightSide(p) || it.rect.contain(p.x, p.y)}
+                        endElement = line.elements.findLast {
+                            it.rect.isPointInRightSide(p) || it.rect.contain(
+                                p.x,
+                                p.y
+                            )
+                        }
                         endLine = line
                         return
                     }
                 } else {
-                    endElement = line.elements.findLast { it.rect.isPointInRightSide(p) || it.rect.contain(p.x, p.y)}
+                    endElement = line.elements.findLast {
+                        it.rect.isPointInRightSide(p) || it.rect.contain(
+                            p.x,
+                            p.y
+                        )
+                    }
                     endLine = line
                     return
                 }
@@ -345,12 +404,22 @@ class TextImageView @JvmOverloads constructor(
                     if (endElement?.rect?.isPointInRightSide(p) == true) {
                         return toEndPressMode(p)
                     } else {
-                        startElement = line.elements.find { it.rect.isPointInLeftSide(p) || it.rect.contain(p.x, p.y) }
+                        startElement = line.elements.find {
+                            it.rect.isPointInLeftSide(p) || it.rect.contain(
+                                p.x,
+                                p.y
+                            )
+                        }
                         startLine = line
                         return
                     }
                 } else {
-                    startElement = line.elements.find { it.rect.isPointInLeftSide(p) || it.rect.contain(p.x, p.y) }
+                    startElement = line.elements.find {
+                        it.rect.isPointInLeftSide(p) || it.rect.contain(
+                            p.x,
+                            p.y
+                        )
+                    }
                     startLine = line
                     return
                 }
@@ -386,14 +455,28 @@ class TextImageView @JvmOverloads constructor(
     }
 }
 
-data class CopyCursor(val region: RectF, val angle: Float) {
+data class CopyCursor(val region: BoundingBox, val angle: Float) {
     companion object {
-        val cursorWidth = 8.dp
+        val cursorWidth = 24.dp
 
         fun createEndCursor(p: PointF, angle: Float) =
-            CopyCursor(RectF(p.x, p.y, p.x + 2 * cursorWidth, p.y + 2 * cursorWidth), angle)
+            CopyCursor(
+                BoundingBox(
+                    p,
+                    PointF(p.x + cursorWidth, p.y).rotate(p, angle.toDouble()),
+                    PointF(p.x + cursorWidth, p.y + cursorWidth).rotate(p, angle.toDouble()),
+                    PointF(p.x, p.y + cursorWidth).rotate(p, angle.toDouble())
+                ), angle
+            )
 
         fun createStartCursor(p: PointF, angle: Float) =
-            CopyCursor(RectF(p.x - 2 * cursorWidth, p.y, p.x, p.y + 2 * cursorWidth), angle)
+            CopyCursor(
+                BoundingBox(
+                    PointF(p.x - cursorWidth, p.y).rotate(p, angle.toDouble()),
+                    p,
+                    PointF(p.x, p.y + cursorWidth).rotate(p, angle.toDouble()),
+                    PointF(p.x - cursorWidth, p.y + cursorWidth).rotate(p, angle.toDouble())
+                ), angle
+            )
     }
 }

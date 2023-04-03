@@ -8,7 +8,7 @@ import kotlin.math.*
 
 infix fun PointF.crossProduct(p: PointF) = x * p.x + y * p.y
 
-fun PointF.scale(xRatio: Float, yRatio: Float) = PointF(x * xRatio, y * yRatio)
+fun PointF.scale(xRatio: Float, yRatio: Float, p: PointF) = PointF(x * xRatio + p.x, y * yRatio + p.y)
 
 fun centerOf(p1: PointF, p2: PointF) = PointF((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
 

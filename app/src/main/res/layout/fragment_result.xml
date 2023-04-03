@@ -19,7 +19,7 @@
 
     <ScrollView
         android:id="@+id/textSelectedContainer"
-        android:background="@color/white"
+        android:background="@drawable/top_round_white_bg"
         android:layout_width="match_parent"
         android:layout_height="100dp"
         android:orientation="vertical"
@@ -28,7 +28,7 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <TextView
-            android:layout_margin="8dp"
+            android:layout_margin="12dp"
             android:id="@+id/textSelected"
             android:textColor="@color/black"
             android:layout_width="match_parent"
