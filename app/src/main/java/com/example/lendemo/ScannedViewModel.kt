@@ -21,17 +21,17 @@ import kotlin.math.sqrt
 
 class ScannedViewModel : ViewModel() {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    val result = MutableLiveData<ScannedResult>()
+    val result = MutableLiveData<TextImage>()
 
     fun extractText(image: InputImage) {
-        result.postValue(ScannedResult(image))
+        result.postValue(TextImage(image))
         viewModelScope.launch(Dispatchers.Default) {
-            val scannedResult = suspendCoroutine<ScannedResult> { continuation ->
+            val textImage = suspendCoroutine<TextImage> { continuation ->
                 recognizer.process(image).continueWith {
-                    continuation.resume(ScannedResult(image, getLines(it.result.textBlocks)))
+                    continuation.resume(TextImage(image, getLines(it.result.textBlocks)))
                 }
             }
-            result.postValue(scannedResult)
+            result.postValue(textImage)
         }
     }
 
@@ -59,6 +59,7 @@ class ScannedViewModel : ViewModel() {
                         ).x
                     })
             })
+            return@forEach
         }
         return lines.sortedBy { it.rect.lineBox.top }
     }
@@ -91,5 +92,3 @@ class ScannedViewModel : ViewModel() {
         return createBoundingBox(bottomLeft, bottomRight, thickness.toFloat())
     }
 }
-
-data class ScannedResult(val image: InputImage, val blocks: List<Line> = emptyList())

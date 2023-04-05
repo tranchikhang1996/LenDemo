@@ -6,12 +6,13 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.applyCanvas
+import androidx.core.view.setPadding
 import com.example.lendemo.*
 import com.example.lendemo.extension.dp
 import com.example.lendemo.extension.rotate
-import com.example.lendemo.view.CopyCursor.Companion.createEndCursor
-import com.example.lendemo.view.CopyCursor.Companion.createStartCursor
-import com.example.lendemo.view.CopyCursor.Companion.cursorWidth
+import com.example.lendemo.view.TextImageView.TextSelectedCursor.Companion.createEndTextSelectedCursor
+import com.example.lendemo.view.TextImageView.TextSelectedCursor.Companion.createStartTextSelectedCursor
+import com.example.lendemo.view.TextImageView.TextSelectedCursor.Companion.cursorWidth
 
 class TextImageView @JvmOverloads constructor(
     ctx: Context,
@@ -22,19 +23,20 @@ class TextImageView @JvmOverloads constructor(
     private val cursorPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textSelectedPaint = Paint()
     private var dimBackground: Bitmap? = null
-    private var result: ScannedResult? = null
+    private var textImage: TextImage? = null
     private var scaledLines: List<Line> = emptyList()
-    private var startElement: Element? = null
-    private var endElement: Element? = null
-    private var startLine: Line? = null
-    private var endLine: Line? = null
-    private var startCursor: CopyCursor? = null
-    private var endCursor: CopyCursor? = null
-    private var isEndPressing = false
-    private var isStartPressing = false
+    private var startSelectedElement: Element? = null
+    private var endSelectedElement: Element? = null
+    private var startSelectedLine: Line? = null
+    private var endSelectedLine: Line? = null
+    private var startCursor: TextSelectedCursor? = null
+    private var endCursor: TextSelectedCursor? = null
+    private var isEndCursorPressing = false
+    private var isStartCursorPressing = false
     private var lastMoveUpdateTime = 0L
     private val selectedLines = mutableListOf<BoundingBox>()
     private var selectedText: String? = null
+    private var isFirstSelection = true
 
     private var cursorPressPadding: PointF? = null
 
@@ -48,36 +50,29 @@ class TextImageView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        result?.run {
+        textImage?.run {
             val xRatio = (w.toFloat() - 2f * cursorWidth) / image.width.toFloat()
             val yRatio = (h.toFloat() - 2f * cursorWidth) / image.height.toFloat()
-            scaledLines = blocks.map { block ->
-                block.scale(
-                    xRatio,
-                    yRatio,
-                    PointF(cursorWidth.toFloat(), cursorWidth.toFloat())
-                )
+            scaledLines = textLines.map { block ->
+                block.scale(xRatio, yRatio, PointF(cursorWidth.toFloat(), cursorWidth.toFloat()))
             }
-            createDimBackground(w, h)
+            createDimBackground(w, h, scaledLines)
         }
     }
 
-    fun setTextBlocks(result: ScannedResult) {
-        this.result = result
-        val xRatio = (width.toFloat() - 2f * cursorWidth) / result.image.width.toFloat()
-        val yRatio = (height.toFloat() - 2f * cursorWidth) / result.image.height.toFloat()
-        this.scaledLines = result.blocks.map {
-            it.scale(
-                xRatio,
-                yRatio,
-                PointF(cursorWidth.toFloat(), cursorWidth.toFloat())
-            )
+    fun setImage(textImage: TextImage) {
+        this.textImage = textImage
+        val xRatio = (width.toFloat() - 2f * cursorWidth) / textImage.image.width.toFloat()
+        val yRatio = (height.toFloat() - 2f * cursorWidth) / textImage.image.height.toFloat()
+        this.scaledLines = textImage.textLines.map {
+            it.scale(xRatio, yRatio, PointF(cursorWidth.toFloat(), cursorWidth.toFloat()))
         }
-        createDimBackground(width, height)
-        invalidate()
+        createDimBackground(width, height, this.scaledLines)
+        setPadding(cursorWidth)
+        setImageBitmap(textImage.image.bitmapInternal)
     }
 
-    private fun createDimBackground(w: Int, h: Int) {
+    private fun createDimBackground(w: Int, h: Int, lines: List<Line>) {
         dimBackground = if (w > 0 && h > 0) {
             Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).applyCanvas {
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -91,7 +86,7 @@ class TextImageView @JvmOverloads constructor(
                     paint
                 )
                 paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-                scaledLines.forEach { drawBox(this, it.rect, paint) }
+                drawBoxes(this, lines.map { it.rect }, paint)
             }
         } else null
     }
@@ -99,19 +94,20 @@ class TextImageView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         dimBackground?.let { canvas.drawBitmap(it, 0f, 0f, null) }
-        selectedLines.forEach { drawBox(canvas, it, textSelectedPaint) }
+        drawBoxes(canvas, selectedLines, textSelectedPaint)
         drawStartCursor(canvas)
         drawEndCursor(canvas)
     }
 
-    private fun drawBox(canvas: Canvas, box: BoundingBox?, paint: Paint) {
-        box ?: return
+    private fun drawBoxes(canvas: Canvas, boxes: List<BoundingBox>, paint: Paint) {
         val path = Path()
-        path.moveTo(box.pointA.x, box.pointA.y)
-        path.lineTo(box.pointB.x, box.pointB.y)
-        path.lineTo(box.pointC.x, box.pointC.y)
-        path.lineTo(box.pointD.x, box.pointD.y)
-        path.lineTo(box.pointA.x, box.pointA.y)
+        boxes.forEach { box ->
+            path.moveTo(box.pointA.x, box.pointA.y)
+            path.lineTo(box.pointB.x, box.pointB.y)
+            path.lineTo(box.pointC.x, box.pointC.y)
+            path.lineTo(box.pointD.x, box.pointD.y)
+            path.lineTo(box.pointA.x, box.pointA.y)
+        }
         canvas.drawPath(path, paint)
     }
 
@@ -170,14 +166,14 @@ class TextImageView @JvmOverloads constructor(
     }
 
     private fun onActionUp(event: MotionEvent) {
-        if (isEndPressing) {
+        if (isEndCursorPressing) {
             onEndCursorMove(
                 PointF(
                     event.x + (cursorPressPadding?.x ?: 0f),
                     event.y + (cursorPressPadding?.y ?: 0f)
                 )
             )
-        } else if (isStartPressing) {
+        } else if (isStartCursorPressing) {
             onStartCursorMove(
                 PointF(
                     event.x + (cursorPressPadding?.x ?: 0f),
@@ -185,10 +181,10 @@ class TextImageView @JvmOverloads constructor(
                 )
             )
         }
-        startCursor = startElement?.rect?.let { createStartCursor(it.pointD, -it.angle) }
-        endCursor = endElement?.rect?.let { createEndCursor(it.pointC, -it.angle) }
-        isStartPressing = false
-        isEndPressing = false
+        startCursor = startSelectedElement?.rect?.let { createStartTextSelectedCursor(it.pointD, -it.angle) }
+        endCursor = endSelectedElement?.rect?.let { createEndTextSelectedCursor(it.pointC, -it.angle) }
+        isStartCursorPressing = false
+        isEndCursorPressing = false
         cursorPressPadding = null
         updateTextAndSelectedLines()
     }
@@ -199,35 +195,34 @@ class TextImageView @JvmOverloads constructor(
                 endCursor?.region?.pointA?.x?.let { it - event.x } ?: 0f,
                 endCursor?.region?.pointA?.y?.let { it - event.y } ?: 0f
             )
-            isEndPressing = true
+            isEndCursorPressing = true
         } else if (startCursor?.region?.contain(event.x, event.y) == true) {
             cursorPressPadding = PointF(
                 startCursor?.region?.pointB?.x?.let { it - event.x } ?: 0f,
                 startCursor?.region?.pointB?.y?.let { it - event.y } ?: 0f
             )
-            isStartPressing = true
+            isStartCursorPressing = true
         } else {
             startCursor = null
             endCursor = null
-            startElement = null
-            endElement = null
-            startLine = null
-            endLine = null
+            startSelectedElement = null
+            endSelectedElement = null
+            startSelectedLine = null
+            endSelectedLine = null
             selectedLines.clear()
             selectedText = null
-            isEndPressing = false
-            isStartPressing = false
+            isEndCursorPressing = false
+            isStartCursorPressing = false
             cursorPressPadding = null
             lines@ for (line in scaledLines) {
                 if (!line.rect.contain(event.x, event.y)) continue
                 for (element in line.elements) {
                     if (!element.rect.contain(event.x, event.y)) continue
-                    startElement = element
-                    endElement = element
-                    startLine = line
-                    endLine = line
-                    startCursor = createStartCursor(element.rect.pointD, -element.rect.angle)
-                    endCursor = createEndCursor(element.rect.pointC, -element.rect.angle)
+                    startSelectedLine = if(isFirstSelection) scaledLines.first() else line
+                    startSelectedElement = if(isFirstSelection) startSelectedLine?.elements?.firstOrNull() else element
+                    endSelectedLine = if(isFirstSelection) scaledLines.last() else line
+                    endSelectedElement = if(isFirstSelection) endSelectedLine?.elements?.lastOrNull() else element
+                    isFirstSelection = false
                     break@lines
                 }
             }
@@ -238,7 +233,7 @@ class TextImageView @JvmOverloads constructor(
         if (System.currentTimeMillis() - lastMoveUpdateTime < 100L) {
             return
         }
-        if (isStartPressing) {
+        if (isStartCursorPressing) {
             onStartCursorMove(
                 PointF(
                     event.x + (cursorPressPadding?.x ?: 0f),
@@ -247,7 +242,7 @@ class TextImageView @JvmOverloads constructor(
             )
             updateTextAndSelectedLines()
             lastMoveUpdateTime = System.currentTimeMillis()
-        } else if (isEndPressing) {
+        } else if (isEndCursorPressing) {
             onEndCursorMove(
                 PointF(
                     event.x + (cursorPressPadding?.x ?: 0f),
@@ -260,10 +255,10 @@ class TextImageView @JvmOverloads constructor(
     }
 
     private fun updateTextAndSelectedLines() {
-        val sLine = startLine ?: return
-        val eLine = endLine ?: return
-        val sElement = startElement ?: return
-        val eElement = endElement ?: return
+        val sLine = startSelectedLine ?: return
+        val eLine = endSelectedLine ?: return
+        val sElement = startSelectedElement ?: return
+        val eElement = endSelectedElement ?: return
         val fromLine = scaledLines.indexOf(sLine)
         val toLine = scaledLines.indexOf(eLine)
         val textBuilder = StringBuilder("")
@@ -276,14 +271,7 @@ class TextImageView @JvmOverloads constructor(
                 textBuilder.append(" ")
             }
             textBuilder.trim()
-            selectedLines.add(
-                BoundingBox(
-                    sElement.rect.pointA,
-                    eElement.rect.pointB,
-                    eElement.rect.pointC,
-                    sElement.rect.pointD
-                )
-            )
+            selectedLines.add(BoundingBox(sElement.rect.pointA, eElement.rect.pointB, eElement.rect.pointC, sElement.rect.pointD))
         } else {
             for (i in fromLine..toLine) {
                 val line = scaledLines[i]
@@ -296,14 +284,7 @@ class TextImageView @JvmOverloads constructor(
                         }
                         textBuilder.trim()
                         textBuilder.appendLine()
-                        selectedLines.add(
-                            BoundingBox(
-                                sElement.rect.pointA,
-                                line.rect.pointB,
-                                line.rect.pointC,
-                                sElement.rect.pointD
-                            )
-                        )
+                        selectedLines.add(BoundingBox(sElement.rect.pointA, line.rect.pointB, line.rect.pointC, sElement.rect.pointD))
                     }
                     eLine.id -> {
                         val toElement = line.elements.indexOf(eElement)
@@ -312,14 +293,7 @@ class TextImageView @JvmOverloads constructor(
                             textBuilder.append(" ")
                         }
                         textBuilder.trim()
-                        selectedLines.add(
-                            BoundingBox(
-                                line.rect.pointA,
-                                eElement.rect.pointB,
-                                eElement.rect.pointC,
-                                line.rect.pointD
-                            )
-                        )
+                        selectedLines.add(BoundingBox(line.rect.pointA, eElement.rect.pointB, eElement.rect.pointC, line.rect.pointD))
                     }
                     else -> {
                         textBuilder.append(line.text)
@@ -336,31 +310,31 @@ class TextImageView @JvmOverloads constructor(
 
     private fun onEndCursorMove(p: PointF) {
         endCursor = null
-        val startLineIndex = scaledLines.indexOf(startLine)
+        val startLineIndex = scaledLines.indexOf(startSelectedLine)
         for (i in startLineIndex until scaledLines.size) {
             val line = scaledLines[i]
             if (line.rect.contain(p.x, p.y)) {
-                if (line.id == startLine?.id) {
-                    if (startElement?.rect?.isPointInLeftSide(p) == true) {
-                        return toStartPressMode(p)
+                if (line.id == startSelectedLine?.id) {
+                    if (startSelectedElement?.rect?.isPointInLeftSide(p) == true) {
+                        return toStartCursorPressMode(p)
                     } else {
-                        endElement = line.elements.findLast {
+                        endSelectedElement = line.elements.findLast {
                             it.rect.isPointInRightSide(p) || it.rect.contain(
                                 p.x,
                                 p.y
                             )
                         }
-                        endLine = line
+                        endSelectedLine = line
                         return
                     }
                 } else {
-                    endElement = line.elements.findLast {
+                    endSelectedElement = line.elements.findLast {
                         it.rect.isPointInRightSide(p) || it.rect.contain(
                             p.x,
                             p.y
                         )
                     }
-                    endLine = line
+                    endSelectedLine = line
                     return
                 }
             }
@@ -369,58 +343,58 @@ class TextImageView @JvmOverloads constructor(
         for (i in startLineIndex until scaledLines.size) {
             val line = scaledLines[i]
             if (line.rect.isPointInAbove(p)) {
-                if (line.id == startLine?.id) {
-                    return toStartPressMode(p)
+                if (line.id == startSelectedLine?.id) {
+                    return toStartCursorPressMode(p)
                 } else {
                     return
                 }
             } else {
-                endElement = line.elements.last()
-                endLine = line
+                endSelectedElement = line.elements.last()
+                endSelectedLine = line
             }
         }
     }
 
-    private fun toStartPressMode(p: PointF) {
-        endElement = startElement
-        endLine = startLine
-        startElement = null
-        startLine = null
-        isEndPressing = false
-        isStartPressing = true
-        endElement?.let {
-            endCursor = createEndCursor(it.rect.pointC, -it.rect.angle)
+    private fun toStartCursorPressMode(p: PointF) {
+        endSelectedElement = startSelectedElement
+        endSelectedLine = startSelectedLine
+        startSelectedElement = null
+        startSelectedLine = null
+        isEndCursorPressing = false
+        isStartCursorPressing = true
+        endSelectedElement?.let {
+            endCursor = createEndTextSelectedCursor(it.rect.pointC, -it.rect.angle)
         }
         onStartCursorMove(p)
     }
 
     private fun onStartCursorMove(p: PointF) {
         startCursor = null
-        val endLineIndex = scaledLines.indexOf(endLine)
+        val endLineIndex = scaledLines.indexOf(endSelectedLine)
         for (i in endLineIndex downTo 0) {
             val line = scaledLines[i]
             if (line.rect.contain(p.x, p.y)) {
-                if (line.id == endLine?.id) {
-                    if (endElement?.rect?.isPointInRightSide(p) == true) {
-                        return toEndPressMode(p)
+                if (line.id == endSelectedLine?.id) {
+                    if (endSelectedElement?.rect?.isPointInRightSide(p) == true) {
+                        return toEndCursorPressMode(p)
                     } else {
-                        startElement = line.elements.find {
+                        startSelectedElement = line.elements.find {
                             it.rect.isPointInLeftSide(p) || it.rect.contain(
                                 p.x,
                                 p.y
                             )
                         }
-                        startLine = line
+                        startSelectedLine = line
                         return
                     }
                 } else {
-                    startElement = line.elements.find {
+                    startSelectedElement = line.elements.find {
                         it.rect.isPointInLeftSide(p) || it.rect.contain(
                             p.x,
                             p.y
                         )
                     }
-                    startLine = line
+                    startSelectedLine = line
                     return
                 }
             }
@@ -429,38 +403,34 @@ class TextImageView @JvmOverloads constructor(
         for (i in endLineIndex downTo 0) {
             val line = scaledLines[i]
             if (line.rect.isPointInBelow(p)) {
-                if (line.id == endLine?.id) {
-                    return toEndPressMode(p)
+                if (line.id == endSelectedLine?.id) {
+                    return toEndCursorPressMode(p)
                 } else {
                     return
                 }
             } else {
-                startElement = line.elements.first()
-                startLine = line
+                startSelectedElement = line.elements.first()
+                startSelectedLine = line
             }
         }
     }
 
-    private fun toEndPressMode(p: PointF) {
-        startElement = endElement
-        startLine = endLine
-        endElement = null
-        endLine = null
-        isStartPressing = false
-        isEndPressing = true
-        startElement?.let {
-            startCursor = createStartCursor(it.rect.pointD, -it.rect.angle)
-        }
+    private fun toEndCursorPressMode(p: PointF) {
+        startSelectedElement = endSelectedElement
+        startSelectedLine = endSelectedLine
+        endSelectedElement = null
+        endSelectedLine = null
+        isStartCursorPressing = false
+        isEndCursorPressing = true
+        startSelectedElement?.let { startCursor = createStartTextSelectedCursor(it.rect.pointD, -it.rect.angle) }
         onEndCursorMove(p)
     }
-}
 
-data class CopyCursor(val region: BoundingBox, val angle: Float) {
-    companion object {
-        val cursorWidth = 24.dp
+    data class TextSelectedCursor(val region: BoundingBox, val angle: Float) {
+        companion object {
+            val cursorWidth = 24.dp
 
-        fun createEndCursor(p: PointF, angle: Float) =
-            CopyCursor(
+            fun createEndTextSelectedCursor(p: PointF, angle: Float) = TextSelectedCursor(
                 BoundingBox(
                     p,
                     PointF(p.x + cursorWidth, p.y).rotate(p, angle.toDouble()),
@@ -469,8 +439,7 @@ data class CopyCursor(val region: BoundingBox, val angle: Float) {
                 ), angle
             )
 
-        fun createStartCursor(p: PointF, angle: Float) =
-            CopyCursor(
+            fun createStartTextSelectedCursor(p: PointF, angle: Float) = TextSelectedCursor(
                 BoundingBox(
                     PointF(p.x - cursorWidth, p.y).rotate(p, angle.toDouble()),
                     p,
@@ -478,5 +447,6 @@ data class CopyCursor(val region: BoundingBox, val angle: Float) {
                     PointF(p.x - cursorWidth, p.y + cursorWidth).rotate(p, angle.toDouble())
                 ), angle
             )
+        }
     }
 }
