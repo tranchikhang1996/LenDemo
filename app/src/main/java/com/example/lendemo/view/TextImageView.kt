@@ -51,25 +51,28 @@ class TextImageView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         textImage?.run {
+            if (textLines.isEmpty()) return@run
             val xRatio = (w.toFloat() - 2f * cursorWidth) / image.width.toFloat()
             val yRatio = (h.toFloat() - 2f * cursorWidth) / image.height.toFloat()
             scaledLines = textLines.map { block ->
                 block.scale(xRatio, yRatio, PointF(cursorWidth.toFloat(), cursorWidth.toFloat()))
             }
             createDimBackground(w, h, scaledLines)
+            invalidate()
         }
     }
 
     fun setImage(textImage: TextImage) {
+        setImageBitmap(textImage.image.bitmapInternal)
         this.textImage = textImage
+        if (textImage.textLines.isEmpty()) return
         val xRatio = (width.toFloat() - 2f * cursorWidth) / textImage.image.width.toFloat()
         val yRatio = (height.toFloat() - 2f * cursorWidth) / textImage.image.height.toFloat()
         this.scaledLines = textImage.textLines.map {
             it.scale(xRatio, yRatio, PointF(cursorWidth.toFloat(), cursorWidth.toFloat()))
         }
         createDimBackground(width, height, this.scaledLines)
-        setPadding(cursorWidth)
-        setImageBitmap(textImage.image.bitmapInternal)
+        invalidate()
     }
 
     private fun createDimBackground(w: Int, h: Int, lines: List<Line>) {

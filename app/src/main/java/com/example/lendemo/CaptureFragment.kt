@@ -106,7 +106,7 @@ class CaptureFragment : Fragment() {
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             imageCapture = ImageCapture.Builder()
-                .setTargetRotation(binding.viewFinder.display.rotation)
+                .setTargetRotation(binding.viewFinder.display?.rotation ?: Surface.ROTATION_0)
                 .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                 .build()
 

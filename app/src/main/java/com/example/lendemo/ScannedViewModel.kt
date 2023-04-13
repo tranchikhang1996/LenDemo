@@ -26,7 +26,7 @@ class ScannedViewModel : ViewModel() {
     fun extractText(image: InputImage) {
         result.postValue(TextImage(image))
         viewModelScope.launch(Dispatchers.Default) {
-            val textImage = suspendCoroutine<TextImage> { continuation ->
+            val textImage = suspendCoroutine { continuation ->
                 recognizer.process(image).continueWith {
                     continuation.resume(TextImage(image, getLines(it.result.textBlocks)))
                 }
