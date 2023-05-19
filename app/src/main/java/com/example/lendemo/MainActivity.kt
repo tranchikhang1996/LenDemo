@@ -1,5 +1,6 @@
 package com.example.lendemo
 
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.fragment.app.commit
@@ -17,9 +18,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun showResult() {
+    fun showResult(uri: Uri) {
         supportFragmentManager.commit {
-            replace(R.id.fragment_container, ResultFragment())
+            replace(R.id.fragment_container, ResultFragment.newInstance(uri))
             addToBackStack(null)
         }
     }

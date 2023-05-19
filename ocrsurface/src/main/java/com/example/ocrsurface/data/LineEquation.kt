@@ -1,4 +1,4 @@
-package com.example.lendemo
+package com.example.ocrsurface.data
 
 import android.graphics.PointF
 import androidx.core.graphics.minus
@@ -8,10 +8,6 @@ import kotlin.math.sqrt
 data class LineEquation(val a: Float, val b: Float, val c: Float) {
     fun clone(p: PointF): LineEquation {
         return LineEquation(a, b, (a * p.x + b * p.y) * -1)
-    }
-
-    fun findProjectionPoint(p: PointF): PointF {
-        return from(a, b, p).findCrossPoint(this) ?: p
     }
 
     fun distanceFrom(x: Float, y: Float): Float {
@@ -38,10 +34,6 @@ data class LineEquation(val a: Float, val b: Float, val c: Float) {
             val a = directionVector.y
             val b = directionVector.x * -1
             return LineEquation(a, b, (a * p0.x + b * p0.y) * -1)
-        }
-
-        fun from(a: Float, b: Float, p: PointF): LineEquation {
-            return LineEquation(b, -a, (b * p.x - a * p.y) * -1)
         }
     }
 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="text_selected_background">#8C95BDFF</color>
+    <color name="cursor_color">#537FE7</color>
+    <color name="dim">#667B8FA1</color>
+</resources>

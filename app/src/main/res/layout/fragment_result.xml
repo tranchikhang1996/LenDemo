@@ -4,36 +4,35 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ResultFragment"
-    android:background="@color/black">
+    android:background="@color/black"
+    tools:context=".ResultFragment">
 
     <com.example.lendemo.view.TextImageView
         android:id="@+id/imageView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:padding="24dp"
+        android:layout_height="match_parent"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintDimensionRatio="3:4"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/textSelectedContainer"
-        android:background="@drawable/top_round_white_bg"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:orientation="vertical"
-        android:padding="12dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <TextView
-            android:id="@+id/textSelected"
-            android:textColor="@color/black"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-    </androidx.core.widget.NestedScrollView>
+        app:layout_constraintTop_toTopOf="parent"
+        android:scaleType="matrix"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!--    <androidx.core.widget.NestedScrollView-->
+    <!--        android:id="@+id/textSelectedContainer"-->
+    <!--        android:background="@drawable/top_round_white_bg"-->
+    <!--        android:layout_width="match_parent"-->
+    <!--        android:layout_height="100dp"-->
+    <!--        android:orientation="vertical"-->
+    <!--        android:padding="12dp"-->
+    <!--        app:layout_constraintBottom_toBottomOf="parent"-->
+    <!--        app:layout_constraintEnd_toEndOf="parent"-->
+    <!--        app:layout_constraintStart_toStartOf="parent">-->
+
+    <!--        <TextView-->
+    <!--            android:id="@+id/textSelected"-->
+    <!--            android:textColor="@color/black"-->
+    <!--            android:layout_width="match_parent"-->
+    <!--            android:layout_height="wrap_content"/>-->
+    <!--    </androidx.core.widget.NestedScrollView>-->

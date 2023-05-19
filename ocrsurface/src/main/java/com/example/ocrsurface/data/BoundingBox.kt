@@ -1,13 +1,23 @@
-package com.example.lendemo
+package com.example.ocrsurface.data
 
 import android.graphics.PointF
 import android.graphics.RectF
 import androidx.core.graphics.minus
-import com.example.lendemo.extension.angle
-import com.example.lendemo.extension.centerOf
-import com.example.lendemo.extension.isTheSameSide
-import com.example.lendemo.extension.scale
+import com.example.ocrsurface.utils.angle
+import com.example.ocrsurface.utils.centerOf
+import com.example.ocrsurface.utils.isTheSameSide
 import kotlin.math.sqrt
+
+/**
+ * This class represent the ABCD rectangle that bound element, line or block
+ *   A                   B
+ *    * * * * * * * * * *
+ *    *                 *
+ *    *                 *
+ *    *                 *
+ *    * * * * * * * * * *
+ *   C                   D
+ * */
 
 data class BoundingBox(
     val pointA: PointF = PointF(),
@@ -34,14 +44,6 @@ data class BoundingBox(
         lineBox = RectF(minX, minY, maxX, maxY)
     }
 
-    fun scale(xRatio: Float, yRatio: Float, p: PointF): BoundingBox {
-        return BoundingBox(
-            pointA.scale(xRatio, yRatio, p),
-            pointB.scale(xRatio, yRatio, p),
-            pointC.scale(xRatio, yRatio, p),
-            pointD.scale(xRatio, yRatio, p)
-        )
-    }
     fun isPointInLeftSide(p: PointF): Boolean = !isTheSameSide(p, pointC, pointA, pointD)
 
     fun isPointInRightSide(p: PointF): Boolean = !isTheSameSide(p, pointA, pointB, pointC)
@@ -52,7 +54,7 @@ data class BoundingBox(
     }
 
     fun isPointInBelow(p: PointF): Boolean {
-        if(p.y.compareTo(lineBox.top) < 0) return false
+        if (p.y.compareTo(lineBox.top) < 0) return false
         return !isTheSameSide(p, pointA, pointD, pointC)
     }
 

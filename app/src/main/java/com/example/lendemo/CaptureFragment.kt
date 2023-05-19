@@ -18,9 +18,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import com.example.lendemo.databinding.FragmentCaptureBinding
-import com.google.mlkit.vision.common.InputImage
 import java.io.File
 
 class CaptureFragment : Fragment() {
@@ -32,7 +30,6 @@ class CaptureFragment : Fragment() {
     private lateinit var orientationEventListener: OrientationEventListener
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var pickerLauncher: ActivityResultLauncher<PickVisualMediaRequest>
-    private val viewModel: ScannedViewModel by activityViewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,8 +131,7 @@ class CaptureFragment : Fragment() {
     }
 
     private fun onImageCaptured(uri: Uri) {
-        (activity as? MainActivity)?.showResult()
-        viewModel.extractText(InputImage.fromFilePath(requireContext(), uri))
+        (activity as? MainActivity)?.showResult(uri)
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {

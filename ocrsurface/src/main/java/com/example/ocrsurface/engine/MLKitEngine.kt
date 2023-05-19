@@ -1,39 +1,54 @@
-package com.example.lendemo
+package com.example.ocrsurface.engine
 
+import android.graphics.Bitmap
 import android.graphics.Point
+import android.graphics.PointF
 import androidx.core.graphics.minus
 import androidx.core.graphics.toPointF
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.lendemo.extension.*
+import com.example.ocrsurface.data.BoundingBox
+import com.example.ocrsurface.data.Line
+import com.example.ocrsurface.data.OcrResult
+import com.example.ocrsurface.utils.crossProduct
+import com.example.ocrsurface.utils.rotate
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.sqrt
+import kotlin.math.*
 
-class ScannedViewModel : ViewModel() {
-    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    val result = MutableLiveData<TextImage>()
+class MLKitEngine : OcrEngine {
+    private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
-    fun extractText(image: InputImage) {
-        result.postValue(TextImage(image))
-        viewModelScope.launch(Dispatchers.Default) {
-            val textImage = suspendCoroutine { continuation ->
-                recognizer.process(image).continueWith {
-                    continuation.resume(TextImage(image, getLines(it.result.textBlocks)))
-                }
+    override suspend fun process(bitmap: Bitmap): OcrResult {
+        val inputImage = InputImage.fromBitmap(bitmap, 0)
+        return suspendCoroutine { continuation ->
+            recognizer.process(inputImage).continueWith {
+                continuation.resume(
+                    OcrResult(
+                        inputImage.width,
+                        inputImage.height,
+                        getLines(it.result.textBlocks)
+                    )
+                )
             }
-            result.postValue(textImage)
         }
     }
+
+    override fun process(bitmap: Bitmap, onResult: ((OcrResult) -> Unit)?) {
+        val inputImage = InputImage.fromBitmap(bitmap, 0)
+        recognizer.process(inputImage).addOnSuccessListener {
+            onResult?.invoke(
+                OcrResult(
+                    inputImage.width,
+                    inputImage.height,
+                    getLines(it.textBlocks)
+                )
+            )
+        }
+    }
+
 
     private fun getLines(blocks: List<Text.TextBlock>): List<Line> {
         val lines = mutableListOf<Line>()
@@ -47,7 +62,7 @@ class ScannedViewModel : ViewModel() {
                     line.text,
                     lineBox,
                     line.elements.filter { it.cornerPoints != null }.map { element ->
-                        Element(
+                        com.example.ocrsurface.data.Element(
                             elementCount++,
                             element.text,
                             element.cornerPoints!!.toElementBoundingBox(lineBox)
@@ -90,5 +105,23 @@ class ScannedViewModel : ViewModel() {
             abs(a * topRight.x + b * topRight.y + c) / sqrt(a * a + b * b)
         )
         return createBoundingBox(bottomLeft, bottomRight, thickness.toFloat())
+    }
+
+    private fun createBoundingBox(
+        bottomLeft: PointF,
+        bottomRight: PointF,
+        height: Float
+    ): BoundingBox {
+        val u = bottomRight.minus(bottomLeft)
+        val ox = PointF(1f, 0f)
+        val cosAlphaUAndOx = u.crossProduct(ox) / (u.length())
+        val alpha = acos(cosAlphaUAndOx.toDouble())
+        val topLeft = when {
+            u.y.compareTo(0) < 0 -> PointF(bottomLeft.x + height, bottomLeft.y).rotate(bottomLeft, -alpha - u.x.sign * PI / 2)
+            u.y.compareTo(0) > 0 ->PointF(bottomLeft.x + height, bottomLeft.y).rotate(bottomLeft, alpha - u.x.sign * PI / 2)
+            else -> PointF(bottomLeft.x + height, bottomLeft.y).rotate(bottomLeft, -PI / 2)
+        }
+        val topRight = PointF(topLeft.x + bottomRight.x - bottomLeft.x, topLeft.y + bottomRight.y - bottomLeft.y)
+        return BoundingBox(topLeft, topRight, bottomRight, bottomLeft)
     }
 }
