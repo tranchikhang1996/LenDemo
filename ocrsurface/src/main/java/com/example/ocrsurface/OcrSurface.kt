@@ -13,20 +13,17 @@ import android.graphics.PorterDuffXfermode
 import android.view.MotionEvent
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.applyCanvas
+import androidx.core.graphics.minus
 import com.example.ocrsurface.data.BoundingBox
 import com.example.ocrsurface.data.Element
 import com.example.ocrsurface.data.Line
 import com.example.ocrsurface.data.OcrResult
 import com.example.ocrsurface.engine.MLKitEngine
 import com.example.ocrsurface.engine.OcrEngine
+import com.example.ocrsurface.utils.angle
 import com.example.ocrsurface.utils.centerOf
 import com.example.ocrsurface.utils.rotate
-import kotlin.math.cos
-import kotlin.math.PI
-import kotlin.math.sin
-import kotlin.math.sqrt
-import kotlin.math.pow
-import kotlin.math.abs
+import kotlin.math.*
 
 typealias Cursor = BoundingBox
 
@@ -82,10 +79,10 @@ class OcrSurface constructor(
         this.viewPort = rectF
         this.cursorSize = cursorSize
         startSelectedElement?.rect?.let {
-            startCursor = createStartCursor(it.pointD, -it.angle)
+            startCursor = createStartCursor(it.pointD, it.pointC.minus(it.pointD))
         }
         endSelectedElement?.rect?.let {
-            endCursor = createEndCursor(it.pointC, -it.angle)
+            endCursor = createEndCursor(it.pointC, it.pointC.minus(it.pointD))
         }
         updateDimBackground()
     }
@@ -124,8 +121,8 @@ class OcrSurface constructor(
         val scaleY = values[4]
         val transX = values[2]
         val transY = values[5]
-        cursorPath.reset()
         startCursor?.let {
+            cursorPath.reset()
             val bx = it.pointB.x * scaleX + transX
             val by = it.pointB.y * scaleY + transY
             val ax = it.pointA.x * scaleX + transX
@@ -143,8 +140,10 @@ class OcrSurface constructor(
             cursorPath.lineTo(bx, by)
             cursorPath.moveTo(cenX, cenY)
             cursorPath.addCircle(cenX, cenY, radius, Path.Direction.CCW)
+            canvas.drawPath(cursorPath, cursorPaint)
         }
         endCursor?.let {
+            cursorPath.reset()
             val ax = it.pointA.x * scaleX + transX
             val ay = it.pointA.y * scaleY + transY
             val bx = it.pointB.x * scaleX + transX
@@ -162,8 +161,8 @@ class OcrSurface constructor(
             cursorPath.lineTo(ax, ay)
             cursorPath.moveTo(cenX, cenY)
             cursorPath.addCircle(cenX, cenY, radius, Path.Direction.CW)
+            canvas.drawPath(cursorPath, cursorPaint)
         }
-        canvas.drawPath(cursorPath, cursorPaint)
     }
 
     private fun onOcrResult(result: OcrResult) {
@@ -209,10 +208,10 @@ class OcrSurface constructor(
             )
         }
         startSelectedElement?.rect?.let {
-            startCursor = createStartCursor(it.pointD, -it.angle)
+            startCursor = createStartCursor(it.pointD, it.pointC.minus(it.pointD))
         }
         endSelectedElement?.rect?.let {
-            endCursor = createEndCursor(it.pointC, -it.angle)
+            endCursor = createEndCursor(it.pointC, it.pointC.minus(it.pointD))
         }
         isStartCursorPressing = false
         isEndCursorPressing = false
@@ -411,7 +410,7 @@ class OcrSurface constructor(
         isEndCursorPressing = false
         isStartCursorPressing = true
         endSelectedElement?.rect?.let {
-            endCursor = createEndCursor(it.pointC, -it.angle)
+            endCursor = createEndCursor(it.pointC, it.pointC.minus(it.pointD))
         }
         onStartCursorMove(p)
     }
@@ -465,17 +464,18 @@ class OcrSurface constructor(
         isStartCursorPressing = false
         isEndCursorPressing = true
         startSelectedElement?.rect?.let {
-            startCursor = createStartCursor(it.pointD, -it.angle)
+            startCursor = createStartCursor(it.pointD, it.pointC.minus(it.pointD))
         }
         onEndCursorMove(p)
     }
 
-    private fun createStartCursor(anchor: PointF, angle: Float): Cursor {
+    private fun createStartCursor(anchor: PointF, u: PointF): Cursor {
+        val alpha = u.angle() * u.y.sign
         val region = Cursor(
-            PointF(anchor.x - cursorSize, anchor.y).rotate(anchor, angle.toDouble()),
+            PointF(anchor.x - cursorSize, anchor.y).rotate(anchor, alpha.toDouble()),
             anchor,
-            PointF(anchor.x, anchor.y + cursorSize).rotate(anchor, angle.toDouble()),
-            PointF(anchor.x - cursorSize, anchor.y + cursorSize).rotate(anchor, angle.toDouble())
+            PointF(anchor.x, anchor.y + cursorSize).rotate(anchor, alpha.toDouble()),
+            PointF(anchor.x - cursorSize, anchor.y + cursorSize).rotate(anchor, alpha.toDouble())
         )
 
         val viewPort = this.viewPort ?: return region
@@ -500,12 +500,13 @@ class OcrSurface constructor(
         )
     }
 
-    private fun createEndCursor(anchor: PointF, angle: Float): Cursor {
+    private fun createEndCursor(anchor: PointF, u: PointF): Cursor {
+        val alpha = u.angle() * u.y.sign
         val region = Cursor(
             anchor,
-            PointF(anchor.x + cursorSize, anchor.y).rotate(anchor, angle.toDouble()),
-            PointF(anchor.x + cursorSize, anchor.y + cursorSize).rotate(anchor, angle.toDouble()),
-            PointF(anchor.x, anchor.y + cursorSize).rotate(anchor, angle.toDouble())
+            PointF(anchor.x + cursorSize, anchor.y).rotate(anchor, alpha.toDouble()),
+            PointF(anchor.x + cursorSize, anchor.y + cursorSize).rotate(anchor, alpha.toDouble()),
+            PointF(anchor.x, anchor.y + cursorSize).rotate(anchor, alpha.toDouble())
         )
         val viewPort = this.viewPort ?: return region
 

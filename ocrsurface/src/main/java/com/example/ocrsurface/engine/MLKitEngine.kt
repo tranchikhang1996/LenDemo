@@ -6,8 +6,10 @@ import android.graphics.PointF
 import androidx.core.graphics.minus
 import androidx.core.graphics.toPointF
 import com.example.ocrsurface.data.BoundingBox
+import com.example.ocrsurface.data.Element
 import com.example.ocrsurface.data.Line
 import com.example.ocrsurface.data.OcrResult
+import com.example.ocrsurface.utils.angle
 import com.example.ocrsurface.utils.crossProduct
 import com.example.ocrsurface.utils.rotate
 import com.google.mlkit.vision.common.InputImage
@@ -62,15 +64,16 @@ class MLKitEngine : OcrEngine {
                     line.text,
                     lineBox,
                     line.elements.filter { it.cornerPoints != null }.map { element ->
-                        com.example.ocrsurface.data.Element(
+                        Element(
                             elementCount++,
                             element.text,
                             element.cornerPoints!!.toElementBoundingBox(lineBox)
                         )
                     }.sortedBy {
+                        val u = lineBox.pointC.minus(lineBox.pointD)
                         it.rect.pointD.rotate(
                             lineBox.pointD,
-                            -lineBox.angle.toDouble()
+                            u.angle().toDouble() * (-u.y.sign)
                         ).x
                     })
             })

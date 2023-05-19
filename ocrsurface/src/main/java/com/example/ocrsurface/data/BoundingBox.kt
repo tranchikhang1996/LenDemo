@@ -3,12 +3,12 @@ package com.example.ocrsurface.data
 import android.graphics.PointF
 import android.graphics.RectF
 import androidx.core.graphics.minus
-import com.example.ocrsurface.utils.angle
 import com.example.ocrsurface.utils.centerOf
 import com.example.ocrsurface.utils.isTheSameSide
 import kotlin.math.sqrt
 
 /**
+ *
  * This class represent the ABCD rectangle that bound element, line or block
  *   A                   B
  *    * * * * * * * * * *
@@ -33,7 +33,6 @@ data class BoundingBox(
     val height = pointD.minus(pointA).let { sqrt(it.x * it.x + it.y * it.y) }
     val horizonCenLine = LineEquation.from(pointD, pointC, centerOf(pointD, pointB))
     val verticalCenLine = LineEquation.from(pointD, pointA, centerOf(pointD, pointB))
-    val angle = pointC.minus(pointD).angle()
     val lineBox: RectF
 
     init {

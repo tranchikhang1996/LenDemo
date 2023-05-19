@@ -17,22 +17,22 @@
         app:layout_constraintTop_toTopOf="parent"
         android:scaleType="matrix"/>
 
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/textSelectedContainer"
+            android:background="@drawable/top_round_white_bg"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:orientation="vertical"
+            android:padding="12dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <TextView
+                android:id="@+id/textSelected"
+                android:textColor="@color/black"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+        </androidx.core.widget.NestedScrollView>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <!--    <androidx.core.widget.NestedScrollView-->
-    <!--        android:id="@+id/textSelectedContainer"-->
-    <!--        android:background="@drawable/top_round_white_bg"-->
-    <!--        android:layout_width="match_parent"-->
-    <!--        android:layout_height="100dp"-->
-    <!--        android:orientation="vertical"-->
-    <!--        android:padding="12dp"-->
-    <!--        app:layout_constraintBottom_toBottomOf="parent"-->
-    <!--        app:layout_constraintEnd_toEndOf="parent"-->
-    <!--        app:layout_constraintStart_toStartOf="parent">-->
-
-    <!--        <TextView-->
-    <!--            android:id="@+id/textSelected"-->
-    <!--            android:textColor="@color/black"-->
-    <!--            android:layout_width="match_parent"-->
-    <!--            android:layout_height="wrap_content"/>-->
-    <!--    </androidx.core.widget.NestedScrollView>-->

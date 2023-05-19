@@ -33,9 +33,9 @@ class ResultFragment : Fragment() {
         arguments?.getString(IMG_KEY)?.takeIf { it.isNotEmpty() }?.let {
             setResult(Uri.parse(it))
         }
-//        binding.imageView.onTextSelectedListener = {
-//            binding.textSelected.text = it
-//        }
+        binding.imageView.onTextSelectedListener = {
+            binding.textSelected.text = it
+        }
     }
 
     private fun setResult(uri: Uri) {
